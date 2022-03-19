@@ -11,7 +11,10 @@ public class OnionMain {
             new OnionServer().start();
             OnionClient client = new OnionClient();
             client.runCalculator();
+            OnionClient client2 = new OnionClient();
+            client2.runCalculator();
             client.close();
+            client2.close();
         } catch (SocketException e) {
             e.printStackTrace();
         } catch (UnknownHostException e) {
