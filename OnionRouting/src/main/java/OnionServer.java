@@ -24,6 +24,7 @@ public class OnionServer extends Thread{
         socket.receive(packet);
 
         String received = new String(packet.getData(), 0, packet.getLength());
+        System.out.println("recieved: " + received);
         return received;
     }
 

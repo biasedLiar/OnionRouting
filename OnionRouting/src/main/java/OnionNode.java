@@ -19,15 +19,17 @@ public class OnionNode extends Thread{
     public void recieveMessage() throws IOException {
         DatagramPacket packet = new DatagramPacket(buf2, buf2.length);
         socket.receive(packet);
+        //System.out.println("Message recieved.");
         encryptedMsg = new String(packet.getData(), 0, packet.getLength());
     }
 
     public void decryptMessage() throws UnknownHostException {
+
+        //System.out.println("encrypted message: " + encryptedMsg + "\nEnd encrypted");
         String[] splitMessage = encryptedMsg.split("\n"); //https://attacomsian.com/blog/java-split-string-new-line
-        //System.out.println(splitMessage);
         for (String s :
                 splitMessage) {
-            System.out.println("From inside node:" + s);
+            //System.out.println("From inside node:" + s);
         }
         if ((mode = splitMessage[0]).equals("E")){
             //Exchange keys
@@ -36,7 +38,7 @@ public class OnionNode extends Thread{
             //address = InetAddress.getByName(splitMessage[1]);
             address = InetAddress.getByName("localhost");
             port = Integer.parseInt(splitMessage[2]);
-            msg = String.join("", Arrays.copyOfRange(splitMessage, 3, splitMessage.length));
+            msg = String.join("\n", Arrays.copyOfRange(splitMessage, 3, splitMessage.length));
         }
     }
 

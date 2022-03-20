@@ -6,6 +6,7 @@ public class OnionClient {
     private DatagramSocket socket;
     private InetAddress address;
     private Scanner in;
+    private String msg;
 
     private byte[] buf;
     private byte[] buf2 = new byte[256];
@@ -16,23 +17,36 @@ public class OnionClient {
         address = InetAddress.getByName("localhost");
     }
 
+    public String wrapMessage(String msg){
+        String newMessage = "F\nlocalhost\n1250\n" + msg;
+        return newMessage;
+    }
+
+    public void recieveMessage() throws IOException {
+        DatagramPacket packet = new DatagramPacket(buf2, buf2.length);
+        socket.receive(packet);
+
+        msg = new String(packet.getData(), 0, packet.getLength());
+    }
+
+    public void sendMessage() throws IOException {
+        buf = wrapMessage(msg).getBytes();
+        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 1251);
+        socket.send(packet);
+        //System.out.println("MEssage sent from client");
+    }
+
 
 
     public void runCalculator() throws IOException {
-        String msg = "F\nlocalhost\n1250\nConnecting";
+        msg = "Connecting";
         boolean running = true;
-        DatagramPacket packet;
         while (running){
-            buf = msg.getBytes();
-            packet = new DatagramPacket(buf, buf.length, address, 1251);
-            socket.send(packet);
+            sendMessage();
 
-            packet = new DatagramPacket(buf2, buf2.length);
-            socket.receive(packet);
-
-            String received = new String(packet.getData(), 0, packet.getLength());
-            System.out.println(received);
-            msg = "F\nlocalhost\n1250\n" + in.nextLine();
+            recieveMessage();
+            System.out.println(msg);
+            msg = in.nextLine();
             if (msg.equals("")){
                 running = false;
             }
