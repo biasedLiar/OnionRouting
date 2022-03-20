@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.net.*;
+import java.util.Arrays;
 
 public class OnionNode extends Thread{
     private DatagramSocket socket;
@@ -7,9 +8,9 @@ public class OnionNode extends Thread{
     private byte[] buf2 = new byte[256];
     private String encryptedMsg;
     private String msg;
-    private String metadata;
     private InetAddress address;
     private int port;
+    private String mode;
 
     public OnionNode() throws SocketException {
         socket = new DatagramSocket(1251);
@@ -21,11 +22,22 @@ public class OnionNode extends Thread{
         encryptedMsg = new String(packet.getData(), 0, packet.getLength());
     }
 
-    public String decryptMessage() throws UnknownHostException {
-        String[] splitMessage = encryptedMsg.split("\\r?\\n"); //https://attacomsian.com/blog/java-split-string-new-line
-        address = InetAddress.getByName(splitMessage[0]);
-        port = Integer.parseInt(splitMessage[1]);
-        return "";
+    public void decryptMessage() throws UnknownHostException {
+        String[] splitMessage = encryptedMsg.split("\n"); //https://attacomsian.com/blog/java-split-string-new-line
+        //System.out.println(splitMessage);
+        for (String s :
+                splitMessage) {
+            System.out.println("From inside node:" + s);
+        }
+        if ((mode = splitMessage[0]).equals("E")){
+            //Exchange keys
+        } else {
+            //Forward message
+            //address = InetAddress.getByName(splitMessage[1]);
+            address = InetAddress.getByName("localhost");
+            port = Integer.parseInt(splitMessage[2]);
+            msg = String.join("", Arrays.copyOfRange(splitMessage, 3, splitMessage.length));
+        }
     }
 
 
@@ -43,7 +55,9 @@ public class OnionNode extends Thread{
             while (true){
                 recieveMessage();
                 decryptMessage();
-                forwardMessage();
+                if (mode.equals("F")){
+                    forwardMessage();
+                }
 
             }
 

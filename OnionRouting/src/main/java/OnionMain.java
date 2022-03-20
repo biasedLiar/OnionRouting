@@ -5,16 +5,13 @@ import java.util.Scanner;
 
 public class OnionMain {
     public static void main(String[] args) throws IOException {
-        System.out.println("HEllo world");
         Scanner in = new Scanner(System.in);
         try {
             new OnionServer().start();
+            new OnionNode().start();
             OnionClient client = new OnionClient();
             client.runCalculator();
-            OnionClient client2 = new OnionClient();
-            client2.runCalculator();
             client.close();
-            client2.close();
         } catch (SocketException e) {
             e.printStackTrace();
         } catch (UnknownHostException e) {

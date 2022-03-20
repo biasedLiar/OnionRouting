@@ -12,17 +12,19 @@ public class OnionClient {
 
     public OnionClient() throws SocketException, UnknownHostException {
         in = new Scanner(System.in);
-        socket = new DatagramSocket();
+        socket = new DatagramSocket(8081);
         address = InetAddress.getByName("localhost");
     }
 
+
+
     public void runCalculator() throws IOException {
-        String msg = "Connecting";
+        String msg = "F\nlocalhost\n1250\nConnecting";
         boolean running = true;
         DatagramPacket packet;
         while (running){
             buf = msg.getBytes();
-            packet = new DatagramPacket(buf, buf.length, address, 1250);
+            packet = new DatagramPacket(buf, buf.length, address, 1251);
             socket.send(packet);
 
             packet = new DatagramPacket(buf2, buf2.length);
@@ -30,7 +32,7 @@ public class OnionClient {
 
             String received = new String(packet.getData(), 0, packet.getLength());
             System.out.println(received);
-            msg = in.nextLine();
+            msg = "F\nlocalhost\n1250\n" + in.nextLine();
             if (msg.equals("")){
                 running = false;
             }

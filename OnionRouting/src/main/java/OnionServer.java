@@ -16,7 +16,7 @@ public class OnionServer extends Thread{
 
 
     public String sendMessageGetResponse(String msg, InetAddress address, int port, DatagramPacket packet) throws IOException {
-        buf = msg.getBytes();
+        buf = ("F\nlocalhost\n8081\n" + msg).getBytes();
         packet = new DatagramPacket(buf, buf.length, address, port);
         socket.send(packet);
 
