@@ -12,6 +12,8 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
 import java.sql.SQLOutput;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Scanner;
 
 public class OnionClient {
@@ -19,6 +21,8 @@ public class OnionClient {
     private InetAddress address;
     private Scanner in;
     private String msg;
+    HashMap<Integer, PublicKey> keys;
+    Cipher cipher;
 
     private byte[] encryptedBytes = new byte[300];
 
@@ -28,11 +32,32 @@ public class OnionClient {
     public OnionClient() throws SocketException, UnknownHostException {
         in = new Scanner(System.in);
         socket = new DatagramSocket(8081);
+        keys = new HashMap<>();
         address = InetAddress.getByName("localhost");
+        try {
+            cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        }
     }
 
-    public void wrapMessage(){
-        msg = "F\nlocalhost\n1250\n" + msg;
+    public void encryptMessage(int port){
+        try {
+            cipher.init(Cipher.ENCRYPT_MODE, keys.get(port));
+            cipher.update(msg.getBytes());
+            msg = new String(cipher.doFinal());
+        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void wrapMessage(int port){
+        msg = "localhost\n1250\n" + msg;
+        encryptMessage(port);
+        msg = "F\n" + msg;
+
     }
 
     public void recieveMessage() throws IOException {
@@ -43,10 +68,18 @@ public class OnionClient {
     }
 
     public void recieveEncryption() throws IOException {
+        msg = "E";
+        sendMessage();
         DatagramPacket packet = new DatagramPacket(buf2, buf2.length);
-        socket.receive(packet);
 
-        encryptedBytes = packet.getData();
+        socket.receive(packet);
+        msg = new String(packet.getData(), 0, packet.getLength());
+
+        /*
+        encryptedBytes = Arrays.copyOfRange(packet.getData(), 0, packet.getLength());
+        System.out.println("arraylength: " + encryptedBytes.length);
+        System.out.println("Data recieved: " + packet.getLength());
+         */
     }
 
     public void sendMessage() throws IOException {
@@ -64,61 +97,25 @@ public class OnionClient {
         System.out.println("MEssage sent from client");
     }
 
-    public void doEncryptionTest() throws IllegalBlockSizeException, BadPaddingException, UnsupportedEncodingException, InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
-        //Creating KeyPair generator object
-        KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
-
-        //Initializing the key pair generator
-        keyPairGen.initialize(2048);
-
-        //Generate the pair of keys
-        KeyPair pair = keyPairGen.generateKeyPair();
-
-        //Getting the public key from the key pair
-        PublicKey publicKey = pair.getPublic();
-
-        //Creating a Cipher object
-        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-
-        //Initializing a Cipher object
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-
-        //Add data to the cipher
-        byte[] input = "Welcome to Tutorialspoint".getBytes();
-        cipher.update(input);
-
-        //encrypting the data
-        byte[] cipherText = cipher.doFinal();
-        System.out.println( new String(cipherText, "UTF8"));
-
-        //Initializing the same cipher for decryption
-        cipher.init(Cipher.DECRYPT_MODE, pair.getPrivate());
-
-        //Decrypting the text
-        byte[] decipheredText = cipher.doFinal(cipherText);
-        System.out.println(new String(decipheredText));
-    }
-
     public void keyEchange(int port, InetAddress address1) throws NoSuchAlgorithmException, IOException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        //Source: https://www.tutorialspoint.com/java_cryptography/java_cryptography_quick_guide.htm
-        KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
-        keyPairGen.initialize(2048);
-        KeyPair pair = keyPairGen.generateKeyPair();
-        PublicKey publicKey = pair.getPublic();
-        String modulus = String.valueOf(((RSAPublicKey) publicKey).getModulus());
-        String exponent = String.valueOf(((RSAPublicKey) publicKey).getPublicExponent());
-        //System.out.println("Client\nModulus: " + modulus + "\nExponent: " + exponent);
-        msg = "E\n" + modulus + "\n" + exponent;
-        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-
-
-        sendMessage(address1, port);
         recieveEncryption();
 
-        byte[] input = encryptedBytes;
-        System.out.println("INput length must not be over 245 but is: " + input.length);
+        String[] splitMessage = msg.split("\n"); //https://attacomsian.com/blog/java-split-string-new-line
 
+        //System.out.println("Length of exchange array, should be 3: " + splitMessage.length);
+        BigInteger modulus = new BigInteger(splitMessage[0]);
+        BigInteger exponent = new BigInteger(splitMessage[1]);
 
+        //System.out.println("Server:\nModulus: " +  String.valueOf(modulus) + "\nExponent: " +  String.valueOf(exponent));
+        //source: https://stackoverflow.com/questions/2023549/creating-rsa-keys-from-known-parameters-in-java
+        RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, exponent);
+        KeyFactory factory = KeyFactory.getInstance("RSA");
+        try {
+            PublicKey pub = factory.generatePublic(spec);
+            keys.put(port, pub);
+        } catch (InvalidKeySpecException e) {
+            e.printStackTrace();
+        }
         /*
 
         //source: https://stackoverflow.com/questions/2023549/creating-rsa-keys-from-known-parameters-in-java
@@ -140,6 +137,23 @@ public class OnionClient {
             e.printStackTrace();
         }
 
+
+
+
+
+
+
+
+
+
+        byte[] message = "Success!".getBytes();
+            cipher.update(message);
+            byte[] encrypted = cipher.doFinal();
+            System.out.println("Encrypted response is " + encrypted.length);
+            newBytes = encrypted;
+            System.out.println("After going back and forth: " + new String(newBytes, 0, newBytes.length).getBytes().length);
+
+
          */
 
 
@@ -149,10 +163,15 @@ public class OnionClient {
         cipher.update(input);
         input = cipher.doFinal();
         msg = cipher.doFinal().toString();
-        */
+
+
+
 
         cipher.init(Cipher.DECRYPT_MODE, pair.getPrivate());
-        System.out.println("Starting response: " + new String(cipher.doFinal(input)) + " is the response.");
+        System.out.println("Starting response: " + new String(cipher.doFinal(encryptedBytes)) + " is the response.");
+
+        */
+
 
     }
 
@@ -160,16 +179,16 @@ public class OnionClient {
 
     public void runCalculator() throws IOException {
         try {
-            //doEncryptionTest();
             keyEchange(1251, InetAddress.getByName("localhost"));
             System.out.println("Finished sharing keys");
+
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
         }
         msg = "Connecting";
         boolean running = true;
         while (running){
-            wrapMessage();
+            wrapMessage(1251);
             sendMessage();
             recieveMessage();
             System.out.println(msg);
