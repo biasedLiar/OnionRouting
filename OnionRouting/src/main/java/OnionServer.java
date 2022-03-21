@@ -7,8 +7,8 @@ import java.net.SocketException;
 public class OnionServer extends Thread{
     private DatagramSocket socket;
     private boolean running;
-    private byte[] buf = new byte[256];
-    private byte[] buf2 = new byte[256];
+    private byte[] buf = new byte[2048];
+    private byte[] buf2 = new byte[2048];
     private InetAddress address;
     private String msg;
 
