@@ -9,23 +9,39 @@ public class OnionServer extends Thread{
     private boolean running;
     private byte[] buf = new byte[256];
     private byte[] buf2 = new byte[256];
+    private InetAddress address;
+    private String msg;
 
     public OnionServer() throws SocketException {
         socket = new DatagramSocket(1250);
     }
 
+    public String wrapMessage(String msg){
+        String newMessage = "F\nlocalhost\n8081\n" + msg;
+        return newMessage;
+    }
 
-    public String sendMessageGetResponse(String msg, InetAddress address, int port, DatagramPacket packet) throws IOException {
-        buf = ("F\nlocalhost\n8081\n" + msg).getBytes();
-        packet = new DatagramPacket(buf, buf.length, address, port);
-        socket.send(packet);
-
-        packet = new DatagramPacket(buf2, buf2.length);
+    public void recieveMessage() throws IOException {
+        DatagramPacket packet = new DatagramPacket(buf2, buf2.length);
         socket.receive(packet);
 
-        String received = new String(packet.getData(), 0, packet.getLength());
-        System.out.println("recieved: " + received);
-        return received;
+        msg = new String(packet.getData(), 0, packet.getLength());
+    }
+
+    public void sendMessage() throws IOException {
+        buf = wrapMessage(msg).getBytes();
+        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 1251);
+        socket.send(packet);
+        //System.out.println("MEssage sent from client");
+    }
+
+
+    public String sendMessageGetResponse(String message) throws IOException {
+        msg = message;
+        sendMessage();
+        recieveMessage();
+        return msg;
+
     }
 
     public String getResult(String num1, String num2, String operator){
@@ -52,27 +68,25 @@ public class OnionServer extends Thread{
     }
 
     public void run(){
-        running = true;
         try {
+            address = InetAddress.getByName("localhost");
             running = true;
 
-            DatagramPacket packet = new DatagramPacket(buf, buf.length);
-            socket.receive(packet);
 
-            InetAddress address = packet.getAddress();
-            int port = packet.getPort();
+
+            recieveMessage();
 
             while (running){
-                String num1 = sendMessageGetResponse("Choose number 1:", address, port, packet);
-                String num2 = sendMessageGetResponse("Choose number 2:", address, port, packet);
-                String operator = sendMessageGetResponse("Choose operator: (+/-):", address, port, packet);
+                String num1 = sendMessageGetResponse("Choose number 1:");
+                String num2 = sendMessageGetResponse("Choose number 2:");
+                String operator = sendMessageGetResponse("Choose operator: (+/-):");
 
                 String ans = getResult(num1, num2, operator);
-                String playAgain = sendMessageGetResponse(ans + "\nPlay again? (y/n)", address, port, packet);
+                String playAgain = sendMessageGetResponse(ans + "\nPlay again? (y/n)");
 
                 if (!playAgain.toLowerCase().startsWith("y")) {
                     running = false;
-                    sendMessageGetResponse("Press enter to exit.", address, port, packet);
+                    sendMessageGetResponse("Press enter to exit.");
                 }
             }
 
