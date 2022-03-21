@@ -48,6 +48,7 @@ public class OnionClient {
             cipher.init(Cipher.ENCRYPT_MODE, keys.get(port));
             cipher.update(msg.getBytes());
             msg = new String(cipher.doFinal());
+            System.out.println(msg);
         } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
         }
@@ -84,6 +85,7 @@ public class OnionClient {
 
     public void sendMessage() throws IOException {
         buf = msg.getBytes();
+        System.out.println("MEssage is " + msg.getBytes().length + " at clientside.");
         DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 1251);
         socket.send(packet);
         //System.out.println("MEssage sent from client");

@@ -75,6 +75,7 @@ public class OnionServer extends Thread{
 
 
             recieveMessage();
+            System.out.println("Server reached");
 
             while (running){
                 String num1 = sendMessageGetResponse("Choose number 1:");

@@ -41,6 +41,7 @@ public class OnionNode extends Thread{
         socket.receive(packet);
         //System.out.println("Message recieved.");
         encryptedMsg = new String(packet.getData(), 0, packet.getLength());
+        System.out.println(packet.getLength());
         System.out.println("Length of recieved: " + encryptedMsg.length());
         //unless specified otherwise, the response will be sent back;
         address = packet.getAddress();
@@ -65,12 +66,15 @@ public class OnionNode extends Thread{
             String modulus = String.valueOf(((RSAPublicKey) publicKey).getModulus());
             String exponent = String.valueOf(((RSAPublicKey) publicKey).getPublicExponent());
             msg = modulus + "\n" + exponent;
+            //System.out.println("client:\nModulus: " +  String.valueOf(modulus) + "\nExponent: " +  String.valueOf(exponent));
+
 
 
         } else {
             //Forward message
             //address = InetAddress.getByName(splitMessage[1]);
-            decryptData(String.join("\n", Arrays.copyOfRange(splitMessage, 3, splitMessage.length)).getBytes());
+            decryptData(String.join("\n", Arrays.copyOfRange(splitMessage, 1, splitMessage.length)).getBytes());
+
             address = InetAddress.getByName("localhost");
             port = Integer.parseInt(splitMessage[2]);
             msg = String.join("\n", Arrays.copyOfRange(splitMessage, 3, splitMessage.length));
@@ -79,6 +83,7 @@ public class OnionNode extends Thread{
 
     public void decryptData(byte[] encryptedBytes){
         try {
+            System.out.println("Starting decoding, length: " + encryptedBytes.length);
             cipher.init(Cipher.DECRYPT_MODE, pair.getPrivate());
             msg = new String(cipher.doFinal(encryptedBytes));
             System.out.println("We decoded message: " + msg);
