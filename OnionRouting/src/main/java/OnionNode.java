@@ -36,6 +36,17 @@ public class OnionNode extends Thread{
         }
     }
 
+    public void encryptMessage(int port){
+        try {
+
+            cipher.init(Cipher.ENCRYPT_MODE, pair.getPublic());
+            cipher.update("localhost\n1250\nConnecting".getBytes());
+            System.out.println(pair.getPublic());
+        } catch (InvalidKeyException   e) {
+            e.printStackTrace();
+        }
+    }
+
     public void recieveMessage() throws IOException {
         DatagramPacket packet = new DatagramPacket(buf2, buf2.length);
         socket.receive(packet);
@@ -54,7 +65,7 @@ public class OnionNode extends Thread{
         String[] splitMessage = encryptedMsg.split("\n"); //https://attacomsian.com/blog/java-split-string-new-line
         for (String s :
                 splitMessage) {
-            System.out.println("From inside node:" + s);
+            //System.out.println("From inside node:" + s);
         }
         if ((mode = splitMessage[0]).equals("E")){
             //Exchange keys
@@ -73,6 +84,27 @@ public class OnionNode extends Thread{
         } else {
             //Forward message
             //address = InetAddress.getByName(splitMessage[1]);
+            System.out.println("Starting encrypting");
+            try {
+                System.out.println("client:\nModulus: " +  String.valueOf(((RSAPublicKey) pair.getPublic()).getModulus()) + "\nExponent: " +  String.valueOf(((RSAPublicKey) pair.getPublic()).getPublicExponent()));
+                RSAPublicKeySpec spec = new RSAPublicKeySpec(((RSAPublicKey) pair.getPublic()).getModulus(), ((RSAPublicKey) pair.getPublic()).getPublicExponent());
+                KeyFactory factory = KeyFactory.getInstance("RSA");
+                try {
+                    PublicKey pub = factory.generatePublic(spec);
+                    cipher.init(Cipher.ENCRYPT_MODE, pub);
+                    cipher.update("localhost\n1250\nConnecting".getBytes());
+                    msg="Test";
+                    cipher.init(Cipher.ENCRYPT_MODE, pub);
+                    cipher.update(msg.getBytes());
+                    msg = new String(cipher.doFinal());
+                    System.out.println(msg);
+                } catch (InvalidKeySpecException e) {
+                    e.printStackTrace();
+                }
+            } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+                e.printStackTrace();
+            }
+            System.out.println("Done encrypting");
             decryptData(String.join("\n", Arrays.copyOfRange(splitMessage, 1, splitMessage.length)).getBytes());
 
             address = InetAddress.getByName("localhost");
@@ -83,6 +115,7 @@ public class OnionNode extends Thread{
 
     public void decryptData(byte[] encryptedBytes){
         try {
+
             System.out.println("Starting decoding, length: " + encryptedBytes.length);
             cipher.init(Cipher.DECRYPT_MODE, pair.getPrivate());
             msg = new String(cipher.doFinal(encryptedBytes));

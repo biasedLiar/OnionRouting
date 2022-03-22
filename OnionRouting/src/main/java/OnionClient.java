@@ -108,12 +108,13 @@ public class OnionClient {
         BigInteger modulus = new BigInteger(splitMessage[0]);
         BigInteger exponent = new BigInteger(splitMessage[1]);
 
-        //System.out.println("Server:\nModulus: " +  String.valueOf(modulus) + "\nExponent: " +  String.valueOf(exponent));
+        System.out.println("Server:\nModulus: " +  String.valueOf(modulus) + "\nExponent: " +  String.valueOf(exponent));
         //source: https://stackoverflow.com/questions/2023549/creating-rsa-keys-from-known-parameters-in-java
         RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, exponent);
         KeyFactory factory = KeyFactory.getInstance("RSA");
         try {
             PublicKey pub = factory.generatePublic(spec);
+            System.out.println("From client: ");
             keys.put(port, pub);
         } catch (InvalidKeySpecException e) {
             e.printStackTrace();
@@ -183,6 +184,18 @@ public class OnionClient {
         try {
             keyEchange(1251, InetAddress.getByName("localhost"));
             System.out.println("Finished sharing keys");
+
+            try {
+                System.out.println("STarting klient encryption");
+                msg="Test";
+                cipher.init(Cipher.ENCRYPT_MODE, keys.get(1251));
+                cipher.update(msg.getBytes());
+                msg = new String(cipher.doFinal());
+                System.out.println(msg);
+                System.out.println("Finished client encryption");
+            } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+                e.printStackTrace();
+            }
 
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
