@@ -3,9 +3,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.net.*;
-import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
@@ -21,7 +19,7 @@ public class OnionNode extends Thread{
     private InetAddress address;
     private int port;
     private String mode;
-    private byte[] newBytes = new byte[244];
+    private byte[] msgBytes = new byte[244];
     private KeyPair pair;
     Cipher cipher;
 
@@ -51,9 +49,10 @@ public class OnionNode extends Thread{
         DatagramPacket packet = new DatagramPacket(buf2, buf2.length);
         socket.receive(packet);
         //System.out.println("Message recieved.");
-        encryptedMsg = new String(packet.getData(), 0, packet.getLength());
+
+        msgBytes = packet.getData();
+        msgBytes = Arrays.copyOfRange(msgBytes, 0, packet.getLength());
         System.out.println(packet.getLength());
-        System.out.println("Length of recieved: " + encryptedMsg.length());
         //unless specified otherwise, the response will be sent back;
         address = packet.getAddress();
         port = packet.getPort();
@@ -62,21 +61,23 @@ public class OnionNode extends Thread{
     public void handleData() throws UnknownHostException, NoSuchAlgorithmException {
 
         //System.out.println("encrypted message: " + encryptedMsg + "\nEnd encrypted");
-        String[] splitMessage = encryptedMsg.split("\n"); //https://attacomsian.com/blog/java-split-string-new-line
-        for (String s :
-                splitMessage) {
-            //System.out.println("From inside node:" + s);
-        }
-        if ((mode = splitMessage[0]).equals("E")){
+        if (msgBytes[0] == 1){
+
             //Exchange keys
             //Source: https://www.tutorialspoint.com/java_cryptography/java_cryptography_quick_guide.htm
             KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
             keyPairGen.initialize(2048);
             pair = keyPairGen.generateKeyPair();
             PublicKey publicKey = pair.getPublic();
+
             String modulus = String.valueOf(((RSAPublicKey) publicKey).getModulus());
+            byte[] modBytes = modulus.getBytes();
             String exponent = String.valueOf(((RSAPublicKey) publicKey).getPublicExponent());
+            byte[] expBytes = exponent.getBytes();
+
             msg = modulus + "\n" + exponent;
+            msgBytes = msg.getBytes();
+
             //System.out.println("client:\nModulus: " +  String.valueOf(modulus) + "\nExponent: " +  String.valueOf(exponent));
 
 
@@ -84,42 +85,29 @@ public class OnionNode extends Thread{
         } else {
             //Forward message
             //address = InetAddress.getByName(splitMessage[1]);
-            System.out.println("Starting encrypting");
-            try {
-                System.out.println("client:\nModulus: " +  String.valueOf(((RSAPublicKey) pair.getPublic()).getModulus()) + "\nExponent: " +  String.valueOf(((RSAPublicKey) pair.getPublic()).getPublicExponent()));
-                RSAPublicKeySpec spec = new RSAPublicKeySpec(((RSAPublicKey) pair.getPublic()).getModulus(), ((RSAPublicKey) pair.getPublic()).getPublicExponent());
-                KeyFactory factory = KeyFactory.getInstance("RSA");
-                try {
-                    PublicKey pub = factory.generatePublic(spec);
-                    cipher.init(Cipher.ENCRYPT_MODE, pub);
-                    cipher.update("localhost\n1250\nConnecting".getBytes());
-                    msg="Test";
-                    cipher.init(Cipher.ENCRYPT_MODE, pub);
-                    cipher.update(msg.getBytes());
-                    msg = new String(cipher.doFinal());
-                    System.out.println(msg);
-                } catch (InvalidKeySpecException e) {
-                    e.printStackTrace();
-                }
-            } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
-                e.printStackTrace();
-            }
+            System.out.println("Starting decrypting");
+            //msgBytes = Arrays.copyOfRange(msgBytes, 1, msgBytes.length);
+            System.out.println(msgBytes.length);
+            decryptData(msgBytes);
+            System.out.println("The message is: " + new String(msgBytes));
+
+            /*
             System.out.println("Done encrypting");
             decryptData(String.join("\n", Arrays.copyOfRange(splitMessage, 1, splitMessage.length)).getBytes());
 
             address = InetAddress.getByName("localhost");
             port = Integer.parseInt(splitMessage[2]);
             msg = String.join("\n", Arrays.copyOfRange(splitMessage, 3, splitMessage.length));
+            */
         }
+
     }
 
     public void decryptData(byte[] encryptedBytes){
         try {
 
-            System.out.println("Starting decoding, length: " + encryptedBytes.length);
             cipher.init(Cipher.DECRYPT_MODE, pair.getPrivate());
-            msg = new String(cipher.doFinal(encryptedBytes));
-            System.out.println("We decoded message: " + msg);
+            msgBytes = cipher.doFinal(msgBytes);
         } catch (InvalidKeyException e) {
             e.printStackTrace();
         } catch (IllegalBlockSizeException e) {
@@ -132,7 +120,13 @@ public class OnionNode extends Thread{
 
 
 
-    public void forwardMessage() throws IOException {
+    public void sendBytes() throws IOException {
+        buf = msgBytes;
+        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
+        socket.send(packet);
+    }
+
+    public void sendString() throws IOException {
         buf = msg.getBytes();
         DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
         socket.send(packet);
@@ -147,11 +141,8 @@ public class OnionNode extends Thread{
             while (true){
                 recieveMessage();
                 handleData();
-                if (mode.equals("F")){
-                    forwardMessage();
-                } else {
-                    forwardMessage();
-                }
+                sendBytes();
+
 
             }
 
