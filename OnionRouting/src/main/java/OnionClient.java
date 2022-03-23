@@ -12,9 +12,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
 import java.sql.SQLOutput;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Scanner;
+import java.util.*;
 
 public class OnionClient {
     private DatagramSocket socket;
@@ -44,27 +42,59 @@ public class OnionClient {
         }
     }
 
-    public void encryptMessage(int port){
+    public ArrayList<Integer> getRandomPorts(int numPorts){
+         ArrayList<Integer> ports = new ArrayList<>(keys.keySet());
+         Collections.shuffle(ports);
+         if (ports.size() < numPorts){
+             return ports;
+         } else {
+             return new ArrayList<>(ports.subList(0, numPorts));
+         }
+
+    }
+
+    public void addPortToMessage(int port){
+        byte[] tempBytes = new byte[msgBytes.length + 2];
+        tempBytes[0] = (byte) Math.floor(port/256);
+        tempBytes[1] = (byte) (port % 256);
+        System.out.println("ENcrypting. 0: " + tempBytes[0] + ", 1: " + tempBytes[1] + ", port: " + port);
+
+        for (int i = 0; i < msgBytes.length; i++) {
+            tempBytes[i + 2] = msgBytes[i];
+        }
+        msgBytes = tempBytes;
+    }
+
+    public void encryptMessage(int endPort, int nodePort, MessageMode mode){
         try {
-            cipher.init(Cipher.ENCRYPT_MODE, keys.get(port));
-            cipher.update(msg.getBytes());
-            byte[] bytes = cipher.doFinal();
-            System.out.println("Length of encrypted message from klient: " + bytes.length);
-            msgBytes = bytes;
+            addPortToMessage(endPort);
+            cipher.init(Cipher.ENCRYPT_MODE, keys.get(nodePort));
+            cipher.update(msgBytes);
+            msgBytes = cipher.doFinal();
+            //System.out.println("Length of encrypted message from klient: " + bytes.length);
+
+            byte[] tempBytes = new byte[msgBytes.length+1];
+            tempBytes[0] = mode.getValue();
+            for (int i = 0; i < msgBytes.length; i++) {
+                tempBytes[i + 1] = msgBytes[i];
+            }
+            msgBytes = tempBytes;
 
         } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
         }
     }
 
-    public void wrapMessage(int port, byte flag){
-        msg = "localhost\n1250\n" + msg;
-        encryptMessage(port);
-        byte[] tempBytes = new byte[msgBytes.length+1];
-        tempBytes[0] = flag;
-        for (int i = 0; i < msgBytes.length; i++) {
-            tempBytes[i + 1] = msgBytes[i];
+    public void wrapMessage(int endPort, MessageMode mode, int numOnionPorts){
+        msgBytes = msg.getBytes();
+        ArrayList<Integer> onionPorts = getRandomPorts(numOnionPorts);
+        for (int i = 0; i < onionPorts.size(); i++) {
+            encryptMessage(endPort, onionPorts.get(i), mode);
+            endPort = onionPorts.get(i);
         }
+        //Copy array into larger array
+
+        //System.out.println("MSGbytes length: " + msgBytes.length);
 
     }
 
@@ -79,7 +109,7 @@ public class OnionClient {
 
     public void recieveEncryption() throws IOException {
         msgBytes = new byte[1];
-        msgBytes[0] = 1;
+        msgBytes[0] = MessageMode.KEY_EXCHANGE.getValue();
         sendMessage();
         recieveMessage();
 
@@ -94,10 +124,10 @@ public class OnionClient {
 
     public void sendMessage() throws IOException {
         buf = msgBytes;
-        System.out.println("MEssage is " + msgBytes.length + " at clientside.");
+        //System.out.println("MEssage is " + msgBytes.length + " at clientside.");
         DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 1251);
         socket.send(packet);
-        //System.out.println("MEssage sent from client");
+        System.out.println("MEssage sent from client");
     }
 
     public void sendMessage(InetAddress address, int port) throws IOException {
@@ -120,7 +150,6 @@ public class OnionClient {
         KeyFactory factory = KeyFactory.getInstance("RSA");
         try {
             PublicKey pub = factory.generatePublic(spec);
-            System.out.println("From client: ");
             keys.put(port, pub);
         } catch (InvalidKeySpecException e) {
             e.printStackTrace();
@@ -142,7 +171,7 @@ public class OnionClient {
         msg = "Connecting";
         boolean running = true;
         while (running){
-            wrapMessage(1251, (byte) 2);
+            wrapMessage(1250, MessageMode.FORWARD_ON_NETWORK, 1);
             sendMessage();
             recieveMessage();
             System.out.println(msg);
