@@ -14,10 +14,12 @@ import java.util.HashMap;
 
 public abstract class OnionEndPoint extends OnionParent{
     protected HashMap<Integer, PublicKey> keys;
+    private ArrayList<Integer> nodePorts;
 
 
-    public OnionEndPoint(int port) {
+    public OnionEndPoint(int port, ArrayList<Integer> nodePorts) {
         super(port);
+        this.nodePorts = nodePorts;
         keys = new HashMap<>();
     }
 
@@ -34,8 +36,8 @@ public abstract class OnionEndPoint extends OnionParent{
         calculatePort();
         msg = new String(msgBytes);
     }
-
-    public void keyEchange(int port, InetAddress address1) throws NoSuchAlgorithmException, IOException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+    
+    public void singleKeyExchange(int port, InetAddress address1) throws IOException, NoSuchAlgorithmException {
         this.port = port;
         recieveEncryption();
         String[] splitMessage = msg.split("\n"); //https://attacomsian.com/blog/java-split-string-new-line
@@ -51,6 +53,13 @@ public abstract class OnionEndPoint extends OnionParent{
             keys.put(port, pub);
         } catch (InvalidKeySpecException e) {
             e.printStackTrace();
+        }
+    }
+
+    public void keyEchange(int port, InetAddress address1) throws NoSuchAlgorithmException, IOException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        for (Integer keyPort :
+                nodePorts) {
+            singleKeyExchange(keyPort, address1);
         }
     }
 

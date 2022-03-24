@@ -13,8 +13,8 @@ public class OnionNode extends OnionParent{
     private MessageMode mode;
     private KeyPair pair;
 
-    public OnionNode() throws SocketException {
-        super(1251);
+    public OnionNode(int port) throws SocketException {
+        super(port);
         createKeys();
     }
 

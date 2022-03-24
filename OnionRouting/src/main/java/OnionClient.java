@@ -8,11 +8,11 @@ import java.util.*;
 
 public class OnionClient  extends OnionEndPoint{
     private Scanner in;
+    private int serverPort;
 
-    HashMap<Integer, PublicKey> keys;
-
-    public OnionClient() throws SocketException, UnknownHostException {
-        super(8081);
+    public OnionClient(int port, int serverPort, ArrayList<Integer> nodePorts) throws SocketException, UnknownHostException {
+        super(port, nodePorts);
+        this.serverPort = serverPort;
         in = new Scanner(System.in);
     }
 
@@ -28,7 +28,7 @@ public class OnionClient  extends OnionEndPoint{
             boolean running = true;
             port = 1250;
             while (running){
-                wrapMessage(MessageMode.FORWARD_ON_NETWORK, 1);
+                wrapMessage(MessageMode.FORWARD_ON_NETWORK, 3);
                 sendMessage();
                 recieveMessageUpdatePort();
                 System.out.println(new String(msgBytes));
