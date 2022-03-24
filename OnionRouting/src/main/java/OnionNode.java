@@ -32,17 +32,6 @@ public class OnionNode extends OnionParent{
         pair = keyPairGen.generateKeyPair();
     }
 
-    public void encryptMessage(int port){
-        try {
-
-            cipher.init(Cipher.ENCRYPT_MODE, pair.getPublic());
-            cipher.update("localhost\n1250\nConnecting".getBytes());
-            System.out.println(pair.getPublic());
-        } catch (InvalidKeyException   e) {
-            e.printStackTrace();
-        }
-    }
-
     public void handleData() throws UnknownHostException, NoSuchAlgorithmException {
         mode = MessageMode.valueOf(msgBytes[0]);
         msgBytes = Arrays.copyOfRange(msgBytes, 1, msgBytes.length);
@@ -69,7 +58,7 @@ public class OnionNode extends OnionParent{
             //msgBytes = Arrays.copyOfRange(msgBytes, 1, msgBytes.length);
             //System.out.println(msgBytes.length);
             decryptData(msgBytes);
-            System.out.println("The message is: \n" + new String(msgBytes) + "\nEnd off message.");
+            //System.out.println("The message is: \n" + new String(msgBytes) + "\nEnd off message.");
 
             /*
             System.out.println("Done encrypting");
@@ -92,11 +81,10 @@ public class OnionNode extends OnionParent{
         if (n2 < 0){
             n2 += 256;
         }
-        System.out.println("B1: " + n1);
-        System.out.println("B2: " + n2);
+        //System.out.println("B1: " + n1);
+        //System.out.println("B2: " + n2);
 
         port = n1*256 + n2;
-        System.out.println("Port = " + port);
     }
 
     public void decryptData(byte[] encryptedBytes){
@@ -126,6 +114,7 @@ public class OnionNode extends OnionParent{
             while (true){
                 recieveMessage();
                 handleData();
+                //System.out.println("Now sending message from node");
                 sendMessage();
 
 

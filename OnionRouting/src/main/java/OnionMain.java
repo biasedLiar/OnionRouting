@@ -7,8 +7,8 @@ public class OnionMain {
     public static void main(String[] args) throws IOException {
         Scanner in = new Scanner(System.in);
         try {
-            new OnionServer().start();
             new OnionNode().start();
+            new OnionServer().start();
             new OnionClient().start();
         } catch (SocketException e) {
             e.printStackTrace();

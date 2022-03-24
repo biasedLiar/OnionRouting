@@ -14,7 +14,7 @@ import java.security.spec.RSAPublicKeySpec;
 import java.sql.SQLOutput;
 import java.util.*;
 
-public class OnionClient  extends OnionParent{
+public class OnionClient  extends OnionEndPoint{
     private Scanner in;
 
     HashMap<Integer, PublicKey> keys;
@@ -22,98 +22,14 @@ public class OnionClient  extends OnionParent{
     public OnionClient() throws SocketException, UnknownHostException {
         super(8081);
         in = new Scanner(System.in);
-        keys = new HashMap<>();
     }
 
-    public ArrayList<Integer> getRandomPorts(int numPorts){
-         ArrayList<Integer> ports = new ArrayList<>(keys.keySet());
-         Collections.shuffle(ports);
-         if (ports.size() < numPorts){
-             return ports;
-         } else {
-             return new ArrayList<>(ports.subList(0, numPorts));
-         }
-
-    }
-
-    public void addPortToMessage(int port){
-        byte[] tempBytes = new byte[msgBytes.length + 2];
-        tempBytes[0] = (byte) Math.floor(port/256);
-        tempBytes[1] = (byte) (port % 256);
-        System.out.println("ENcrypting. 0: " + tempBytes[0] + ", 1: " + tempBytes[1] + ", port: " + port);
-
-        for (int i = 0; i < msgBytes.length; i++) {
-            tempBytes[i + 2] = msgBytes[i];
-        }
-        msgBytes = tempBytes;
-    }
-
-    public void encryptMessage(int endPort, int nodePort, MessageMode mode){
-        try {
-            addPortToMessage(endPort);
-            cipher.init(Cipher.ENCRYPT_MODE, keys.get(nodePort));
-            cipher.update(msgBytes);
-            msgBytes = cipher.doFinal();
-            //System.out.println("Length of encrypted message from klient: " + bytes.length);
-
-            byte[] tempBytes = new byte[msgBytes.length+1];
-            tempBytes[0] = mode.getValue();
-            for (int i = 0; i < msgBytes.length; i++) {
-                tempBytes[i + 1] = msgBytes[i];
-            }
-            msgBytes = tempBytes;
-
-        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void wrapMessage(MessageMode mode, int numOnionPorts){
-        msgBytes = msg.getBytes();
-        ArrayList<Integer> onionPorts = getRandomPorts(numOnionPorts);
-        for (int i = 0; i < onionPorts.size(); i++) {
-            encryptMessage(port, onionPorts.get(i), mode);
-            port = onionPorts.get(i);
-        }
-        //Copy array into larger array
-
-        //System.out.println("MSGbytes length: " + msgBytes.length);
-
-    }
-
-
-    public void recieveEncryption() throws IOException {
-        msgBytes = new byte[1];
-        msgBytes[0] = MessageMode.KEY_EXCHANGE.getValue();
-        sendMessage();
-        recieveMessage();
-    }
-
-    public void keyEchange(int port, InetAddress address1) throws NoSuchAlgorithmException, IOException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        recieveEncryption();
-        String[] splitMessage = msg.split("\n"); //https://attacomsian.com/blog/java-split-string-new-line
-        BigInteger modulus = new BigInteger(splitMessage[0]);
-        BigInteger exponent = new BigInteger(splitMessage[1]);
-
-        //System.out.println("Server:\nModulus: " +  String.valueOf(modulus) + "\nExponent: " +  String.valueOf(exponent));
-        //source: https://stackoverflow.com/questions/2023549/creating-rsa-keys-from-known-parameters-in-java
-        RSAPublicKeySpec spec = new RSAPublicKeySpec(modulus, exponent);
-        KeyFactory factory = KeyFactory.getInstance("RSA");
-        try {
-            PublicKey pub = factory.generatePublic(spec);
-            keys.put(port, pub);
-        } catch (InvalidKeySpecException e) {
-            e.printStackTrace();
-        }
-
-
-
-    }
 
 
 
     public void run() {
         try {
+            System.out.println("Starting sharing keys");
             keyEchange(1251, InetAddress.getByName("localhost"));
             System.out.println("Finished sharing keys");
 

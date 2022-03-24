@@ -17,12 +17,14 @@ public abstract class OnionParent extends Thread{
     protected byte[] buf;
     protected byte[] buf2;
     protected int port;
+    protected int myPort;
 
     public OnionParent(int port){
         buf = new byte[2048];
         buf2 = new byte[2048];
         msgBytes = new byte[244];
         this.port = port;
+        myPort = port;
         try {
             socket = new DatagramSocket(port);
             address = InetAddress.getByName("localhost");
@@ -52,15 +54,16 @@ public abstract class OnionParent extends Thread{
         address = packet.getAddress();
         port = packet.getPort();
 
-        System.out.println("Node recieved message");
+        //System.out.println("Node recieved message");
     }
 
     public void sendMessage() throws IOException {
         buf = msgBytes;
         //System.out.println("MEssage is " + msgBytes.length + " at clientside.");
-        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 1251);
+        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
         socket.send(packet);
-        System.out.println("MEssage sent from client");
+
+        System.out.println("MEssage sent to: " + port + " from : " + myPort);
     }
 
 
