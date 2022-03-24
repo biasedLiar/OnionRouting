@@ -3,17 +3,15 @@ import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.net.*;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Scanner;
 
 public abstract class OnionParent extends Thread{
     protected DatagramSocket socket;
     protected InetAddress address;
     protected String msg;
     protected byte[] msgBytes;
-    protected Cipher cipher;
+    protected Cipher rsaCipher;
+    protected Cipher aesCipher;
     protected byte[] buf;
     protected byte[] buf2;
     protected int port;
@@ -28,7 +26,8 @@ public abstract class OnionParent extends Thread{
         try {
             socket = new DatagramSocket(port);
             address = InetAddress.getByName("localhost");
-            cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            rsaCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            aesCipher = Cipher.getInstance("AES/ECB/PKCS5Padding");//https://howtodoinjava.com/java/java-security/java-aes-encryption-example/
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         } catch (NoSuchPaddingException e) {

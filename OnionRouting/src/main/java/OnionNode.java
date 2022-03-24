@@ -1,13 +1,12 @@
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.net.*;
 import java.security.*;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.RSAPublicKeySpec;
 import java.util.Arrays;
 
 public class OnionNode extends OnionParent{
@@ -89,9 +88,16 @@ public class OnionNode extends OnionParent{
 
     public void decryptData(byte[] encryptedBytes){
         try {
+            byte[] rsaEncodedAesKey = Arrays.copyOfRange(msgBytes, 0, 256);
+            msgBytes = Arrays.copyOfRange(msgBytes, 256, msgBytes.length);
 
-            cipher.init(Cipher.DECRYPT_MODE, pair.getPrivate());
-            msgBytes = cipher.doFinal(msgBytes);
+            rsaCipher.init(Cipher.DECRYPT_MODE, pair.getPrivate());
+            byte[] aesBytes = rsaCipher.doFinal(rsaEncodedAesKey);
+
+            //https://www.baeldung.com/java-secret-key-to-string
+            SecretKey secretKey = new SecretKeySpec(aesBytes, 0, aesBytes.length, "AES");
+            aesCipher.init(Cipher.DECRYPT_MODE, secretKey);
+            msgBytes = aesCipher.doFinal(msgBytes);
             if (mode == MessageMode.FORWARD_ON_NETWORK){
                 calculatePort(msgBytes[0], msgBytes[1]);
                 msgBytes = Arrays.copyOfRange(msgBytes, 2, msgBytes.length);
@@ -113,7 +119,11 @@ public class OnionNode extends OnionParent{
 
             while (true){
                 recieveMessage();
+                long startTime = System.nanoTime();
+
                 handleData();
+                long endTime = System.nanoTime();
+                System.out.println((endTime-startTime)/1000);
                 //System.out.println("Now sending message from node");
                 sendMessage();
 

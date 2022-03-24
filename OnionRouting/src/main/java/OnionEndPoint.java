@@ -1,7 +1,4 @@
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
+import javax.crypto.*;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
@@ -62,32 +59,72 @@ public abstract class OnionEndPoint extends OnionParent{
         }
     }
 
-    public void addPortToMessage(){
-        byte[] tempBytes = new byte[msgBytes.length + 2];
-        tempBytes[0] = (byte) Math.floor(port/256);
-        tempBytes[1] = (byte) (port % 256);
-        System.out.println("ENcrypting. 0: " + tempBytes[0] + ", 1: " + tempBytes[1] + ", port: " + port);
-
+    public void addToFrontOfMessage(byte[] newBytes){
+        byte[] tempBytes = new byte[newBytes.length + msgBytes.length];
+        for (int i = 0; i < newBytes.length; i++) {
+            tempBytes[i] = newBytes[i];
+        }
         for (int i = 0; i < msgBytes.length; i++) {
-            tempBytes[i + 2] = msgBytes[i];
+            tempBytes[i + newBytes.length] = msgBytes[i];
         }
         msgBytes = tempBytes;
+    }
+
+    public void addPortToMessage(){
+        byte[] portBytes = new byte[2];
+        portBytes[0] = (byte) Math.floor(port/256);
+        portBytes[1] = (byte) (port % 256);
+        addToFrontOfMessage(portBytes);
     }
 
     public void encryptMessage(int nodePort, MessageMode mode){
         try {
             addPortToMessage();
-            cipher.init(Cipher.ENCRYPT_MODE, keys.get(nodePort));
-            cipher.update(msgBytes);
-            msgBytes = cipher.doFinal();
+
+            //https://stackoverflow.com/questions/18228579/how-to-create-a-secure-random-aes-key-in-java
+            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+            keyGen.init(256);
+            SecretKey secretKey = keyGen.generateKey();
+
+            encryptWithAES(secretKey);
+            encryptAesKeyWithRsa(secretKey, nodePort, mode);
+            setMode(mode);
+
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void encryptWithAES(SecretKey secretKey){//https://howtodoinjava.com/java/java-security/java-aes-encryption-example/
+        try {
+            aesCipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            msgBytes = aesCipher.doFinal(msgBytes);
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (IllegalBlockSizeException e) {
+            e.printStackTrace();
+        } catch (BadPaddingException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void setMode(MessageMode mode){
+        byte[] modeByte = {mode.getValue()};
+        addToFrontOfMessage(modeByte);
+    }
+
+    public void encryptAesKeyWithRsa(SecretKey secretKey, int nodePort, MessageMode mode){
+        byte[] aesBytes = secretKey.getEncoded();
+
+        try {
+            rsaCipher.init(Cipher.ENCRYPT_MODE, keys.get(nodePort));
+            rsaCipher.update(aesBytes);
+            aesBytes = rsaCipher.doFinal();
             //System.out.println("Length of encrypted message from klient: " + bytes.length);
 
-            byte[] tempBytes = new byte[msgBytes.length+1];
-            tempBytes[0] = mode.getValue();
-            for (int i = 0; i < msgBytes.length; i++) {
-                tempBytes[i + 1] = msgBytes[i];
-            }
-            msgBytes = tempBytes;
+            addToFrontOfMessage(aesBytes);
 
         } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
@@ -98,7 +135,10 @@ public abstract class OnionEndPoint extends OnionParent{
         msgBytes = msg.getBytes();
         ArrayList<Integer> onionPorts = getRandomPorts(numOnionPorts);
         for (int i = 0; i < onionPorts.size(); i++) {
+            long startTime = System.nanoTime();
             encryptMessage(onionPorts.get(i), mode);
+            long endTime = System.nanoTime();
+            //System.out.println((endTime-startTime)/1000);
             port = onionPorts.get(i);
         }
         //Copy array into larger array
