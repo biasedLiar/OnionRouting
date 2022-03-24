@@ -58,33 +58,11 @@ public class OnionNode extends OnionParent{
             //System.out.println(msgBytes.length);
             decryptData(msgBytes);
             //System.out.println("The message is: \n" + new String(msgBytes) + "\nEnd off message.");
-
-            /*
-            System.out.println("Done encrypting");
-            decryptData(String.join("\n", Arrays.copyOfRange(splitMessage, 1, splitMessage.length)).getBytes());
-
-            address = InetAddress.getByName("localhost");
-            port = Integer.parseInt(splitMessage[2]);
-            msg = String.join("\n", Arrays.copyOfRange(splitMessage, 3, splitMessage.length));
-            */
         }
 
     }
 
-    public void calculatePort(byte b1, byte b2){
-        int n1 = b1;
-        int n2 = b2;
-        if (n1 < 0){
-            n1 += 256;
-        }
-        if (n2 < 0){
-            n2 += 256;
-        }
-        //System.out.println("B1: " + n1);
-        //System.out.println("B2: " + n2);
 
-        port = n1*256 + n2;
-    }
 
     public void decryptData(byte[] encryptedBytes){
         try {
@@ -99,8 +77,7 @@ public class OnionNode extends OnionParent{
             aesCipher.init(Cipher.DECRYPT_MODE, secretKey);
             msgBytes = aesCipher.doFinal(msgBytes);
             if (mode == MessageMode.FORWARD_ON_NETWORK){
-                calculatePort(msgBytes[0], msgBytes[1]);
-                msgBytes = Arrays.copyOfRange(msgBytes, 2, msgBytes.length);
+                calculatePort();
             } else if(mode == MessageMode.FORWARD_OFF_NETWORK){
                 System.out.println("TODO: implement this function");
             }
@@ -119,11 +96,8 @@ public class OnionNode extends OnionParent{
 
             while (true){
                 recieveMessage();
-                long startTime = System.nanoTime();
 
                 handleData();
-                long endTime = System.nanoTime();
-                System.out.println((endTime-startTime)/1000);
                 //System.out.println("Now sending message from node");
                 sendMessage();
 

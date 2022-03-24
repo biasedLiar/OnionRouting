@@ -1,17 +1,9 @@
 import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
 import java.net.*;
-import java.nio.charset.StandardCharsets;
 import java.security.*;
-import java.security.interfaces.RSAPublicKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.RSAPublicKeySpec;
-import java.sql.SQLOutput;
 import java.util.*;
 
 public class OnionClient  extends OnionEndPoint{
@@ -29,18 +21,17 @@ public class OnionClient  extends OnionEndPoint{
 
     public void run() {
         try {
-            System.out.println("Starting sharing keys");
             keyEchange(1251, InetAddress.getByName("localhost"));
-            System.out.println("Finished sharing keys");
+            System.out.println("Client finished sharing keys");
 
             msg = "Connecting";
             boolean running = true;
+            port = 1250;
             while (running){
-                port = 1250;
                 wrapMessage(MessageMode.FORWARD_ON_NETWORK, 1);
                 sendMessage();
-                recieveMessage();
-                System.out.println(msg);
+                recieveMessageUpdatePort();
+                System.out.println(new String(msgBytes));
                 msg = in.nextLine();
                 if (msg.equals("")){
                     running = false;

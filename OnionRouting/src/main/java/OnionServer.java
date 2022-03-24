@@ -2,8 +2,6 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.security.InvalidKeyException;
@@ -16,38 +14,15 @@ public class OnionServer extends OnionEndPoint{
         super(1250);
     }
 
-    /*
-    public void wrapMessage(){
-        String newMessage = "F\nlocalhost\n8081\n" + msg;
-        msgBytes = newMessage.getBytes();
-    }
-
-     */
-
-    public String sendMessageGetResponse(String message) throws IOException {
-        msg = message;
-        sendMessage();
-        wrapMessage(MessageMode.FORWARD_ON_NETWORK, 1);
-        recieveMessage();
-        return msg;
-
-    }
-
     public void run(){
         try {
-
             keyEchange(1251, InetAddress.getByName("localhost"));
-            System.out.println("Finished sharing keys");
-            address = InetAddress.getByName("localhost");
+            System.out.println("Client finished sharing keys");
             running = true;
 
-
-            System.out.println("Server reached");
-
             while (running){
-                recieveMessage();
-                port = 8081;
-                msgBytes = msg.getBytes();
+                recieveMessageUpdatePort();
+                //System.out.println("Server her, message recieved: \n" + msg);
                 wrapMessage(MessageMode.FORWARD_ON_NETWORK, 1);
                 sendMessage();
 

@@ -42,13 +42,10 @@ public abstract class OnionParent extends Thread{
     public void recieveMessage() throws IOException {
         DatagramPacket packet = new DatagramPacket(buf2, buf2.length);
         socket.receive(packet);
-
         msgBytes = packet.getData();
-
 
         msgBytes = Arrays.copyOfRange(msgBytes, 0, packet.getLength());
         msg = new String(msgBytes);
-        //System.out.println(packet.getLength());
         //unless specified otherwise, the response will be sent back;
         address = packet.getAddress();
         port = packet.getPort();
@@ -62,7 +59,22 @@ public abstract class OnionParent extends Thread{
         DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
         socket.send(packet);
 
-        System.out.println("MEssage sent to: " + port + " from : " + myPort);
+        System.out.println("Message sent from " + myPort + " to " + port);
+    }
+
+
+    public void calculatePort(){
+        int n1 = msgBytes[0];
+        int n2 = msgBytes[1];
+        if (n1 < 0){
+            n1 += 256;
+        }
+        if (n2 < 0){
+            n2 += 256;
+        }
+
+        port = n1*256 + n2;
+        msgBytes = Arrays.copyOfRange(msgBytes, 2, msgBytes.length);
     }
 
 

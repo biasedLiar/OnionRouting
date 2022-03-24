@@ -24,10 +24,15 @@ public abstract class OnionEndPoint extends OnionParent{
     public void recieveEncryption() throws IOException {
         msgBytes = new byte[1];
         msgBytes[0] = MessageMode.KEY_EXCHANGE.getValue();
-        System.out.println("Almost finsihsed sharing keys");
         sendMessage();
 
         recieveMessage();
+    }
+
+    public void recieveMessageUpdatePort() throws IOException {
+        recieveMessage();
+        calculatePort();
+        msg = new String(msgBytes);
     }
 
     public void keyEchange(int port, InetAddress address1) throws NoSuchAlgorithmException, IOException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
@@ -70,16 +75,26 @@ public abstract class OnionEndPoint extends OnionParent{
         msgBytes = tempBytes;
     }
 
-    public void addPortToMessage(){
+    public void addTargetPortToMessage(){
+        addPortToMessage(port);
+    }
+
+    public void addSourcePortToMessage(){
+        addPortToMessage(myPort);
+    }
+
+    public void addPortToMessage(int port){
         byte[] portBytes = new byte[2];
         portBytes[0] = (byte) Math.floor(port/256);
         portBytes[1] = (byte) (port % 256);
         addToFrontOfMessage(portBytes);
     }
 
+
+
     public void encryptMessage(int nodePort, MessageMode mode){
         try {
-            addPortToMessage();
+            addTargetPortToMessage();
 
             //https://stackoverflow.com/questions/18228579/how-to-create-a-secure-random-aes-key-in-java
             KeyGenerator keyGen = KeyGenerator.getInstance("AES");
@@ -87,7 +102,7 @@ public abstract class OnionEndPoint extends OnionParent{
             SecretKey secretKey = keyGen.generateKey();
 
             encryptWithAES(secretKey);
-            encryptAesKeyWithRsa(secretKey, nodePort, mode);
+            encryptAesKeyWithRsa(secretKey, nodePort);
             setMode(mode);
 
 
@@ -115,7 +130,7 @@ public abstract class OnionEndPoint extends OnionParent{
         addToFrontOfMessage(modeByte);
     }
 
-    public void encryptAesKeyWithRsa(SecretKey secretKey, int nodePort, MessageMode mode){
+    public void encryptAesKeyWithRsa(SecretKey secretKey, int nodePort){
         byte[] aesBytes = secretKey.getEncoded();
 
         try {
@@ -133,12 +148,10 @@ public abstract class OnionEndPoint extends OnionParent{
 
     public void wrapMessage(MessageMode mode, int numOnionPorts){
         msgBytes = msg.getBytes();
+        addSourcePortToMessage();
         ArrayList<Integer> onionPorts = getRandomPorts(numOnionPorts);
         for (int i = 0; i < onionPorts.size(); i++) {
-            long startTime = System.nanoTime();
             encryptMessage(onionPorts.get(i), mode);
-            long endTime = System.nanoTime();
-            //System.out.println((endTime-startTime)/1000);
             port = onionPorts.get(i);
         }
         //Copy array into larger array
