@@ -9,9 +9,7 @@ public class OnionMain {
         try {
             new OnionServer().start();
             new OnionNode().start();
-            OnionClient client = new OnionClient();
-            client.runCalculator();
-            client.close();
+            new OnionClient().start();
         } catch (SocketException e) {
             e.printStackTrace();
         } catch (UnknownHostException e) {

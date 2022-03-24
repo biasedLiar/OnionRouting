@@ -4,41 +4,22 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 
-public class OnionServer extends Thread{
-    private DatagramSocket socket;
+public class OnionServer extends OnionParent{
     private boolean running;
-    private byte[] buf = new byte[2048];
-    private byte[] buf2 = new byte[2048];
-    private InetAddress address;
-    private String msg;
 
     public OnionServer() throws SocketException {
-        socket = new DatagramSocket(1250);
+        super(1250);
     }
 
-    public String wrapMessage(String msg){
+    public void wrapMessage(){
         String newMessage = "F\nlocalhost\n8081\n" + msg;
-        return newMessage;
+        msgBytes = newMessage.getBytes();
     }
-
-    public void recieveMessage() throws IOException {
-        DatagramPacket packet = new DatagramPacket(buf2, buf2.length);
-        socket.receive(packet);
-
-        msg = new String(packet.getData(), 0, packet.getLength());
-    }
-
-    public void sendMessage() throws IOException {
-        buf = wrapMessage(msg).getBytes();
-        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, 1251);
-        socket.send(packet);
-        //System.out.println("MEssage sent from client");
-    }
-
 
     public String sendMessageGetResponse(String message) throws IOException {
         msg = message;
         sendMessage();
+        wrapMessage();
         recieveMessage();
         return msg;
 
@@ -70,6 +51,7 @@ public class OnionServer extends Thread{
     public void run(){
         try {
             address = InetAddress.getByName("localhost");
+            port = 1250;
             running = true;
 
 

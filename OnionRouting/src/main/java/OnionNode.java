@@ -10,21 +10,12 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Arrays;
 
-public class OnionNode extends Thread{
-    private DatagramSocket socket;
-    private byte[] buf = new byte[2048];
-    private byte[] buf2 = new byte[2048];
-    private String encryptedMsg;
-    private String msg;
-    private InetAddress address;
-    private int port;
+public class OnionNode extends OnionParent{
     private MessageMode mode;
-    private byte[] msgBytes = new byte[244];
     private KeyPair pair;
-    Cipher cipher;
 
     public OnionNode() throws SocketException {
-        socket = new DatagramSocket(1251);
+        super(1251);
         createKeys();
     }
 
@@ -33,9 +24,8 @@ public class OnionNode extends Thread{
 
         KeyPairGenerator keyPairGen = null;
         try {
-            cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
             keyPairGen = KeyPairGenerator.getInstance("RSA");
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
+        } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
         keyPairGen.initialize(2048);
@@ -53,23 +43,10 @@ public class OnionNode extends Thread{
         }
     }
 
-    public void recieveMessage() throws IOException {
-        DatagramPacket packet = new DatagramPacket(buf2, buf2.length);
-        socket.receive(packet);
-
-        msgBytes = packet.getData();
-        mode = MessageMode.valueOf(msgBytes[0]);
-
-        msgBytes = Arrays.copyOfRange(msgBytes, 1, packet.getLength());
-        //System.out.println(packet.getLength());
-        //unless specified otherwise, the response will be sent back;
-        address = packet.getAddress();
-        port = packet.getPort();
-
-        System.out.println("Node recieved message");
-    }
-
     public void handleData() throws UnknownHostException, NoSuchAlgorithmException {
+        mode = MessageMode.valueOf(msgBytes[0]);
+        msgBytes = Arrays.copyOfRange(msgBytes, 1, msgBytes.length);
+
 
         //System.out.println("encrypted message: " + encryptedMsg + "\nEnd encrypted");
         if (mode == MessageMode.KEY_EXCHANGE){
@@ -143,31 +120,13 @@ public class OnionNode extends Thread{
 
     }
 
-
-
-    public void sendBytes() throws IOException {
-        buf = msgBytes;
-        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
-        socket.send(packet);
-        System.out.println("SEnding message to: " + port);
-    }
-
-    public void sendString() throws IOException {
-        buf = msg.getBytes();
-        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
-        socket.send(packet);
-    }
-
-
-
-
     public void run(){
         try {
 
             while (true){
                 recieveMessage();
                 handleData();
-                sendBytes();
+                sendMessage();
 
 
             }
