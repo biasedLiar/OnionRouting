@@ -11,13 +11,13 @@ import java.util.ArrayList;
 public class OnionServer extends OnionEndPoint{
     private boolean running;
 
-    public OnionServer(int port, ArrayList<Integer> nodePorts) throws SocketException {
+    public OnionServer(int port, ArrayList<String> nodePorts) throws SocketException {
         super(port, nodePorts);
     }
 
     public void run(){
         try {
-            keyEchange(1251, InetAddress.getByName("localhost"));
+            keyEchange();
             System.out.println("Server finished sharing keys");
             running = true;
 

@@ -77,6 +77,7 @@ public class OnionNode extends OnionParent{
             aesCipher.init(Cipher.DECRYPT_MODE, secretKey);
             msgBytes = aesCipher.doFinal(msgBytes);
             if (mode == MessageMode.FORWARD_ON_NETWORK){
+
                 calculatePort();
             } else if(mode == MessageMode.FORWARD_OFF_NETWORK){
                 System.out.println("TODO: implement this function");

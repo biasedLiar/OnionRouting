@@ -10,7 +10,7 @@ public class OnionClient  extends OnionEndPoint{
     private Scanner in;
     private int serverPort;
 
-    public OnionClient(int port, int serverPort, ArrayList<Integer> nodePorts) throws SocketException, UnknownHostException {
+    public OnionClient(int port, int serverPort, ArrayList<String> nodePorts) throws SocketException, UnknownHostException {
         super(port, nodePorts);
         this.serverPort = serverPort;
         in = new Scanner(System.in);
@@ -21,12 +21,12 @@ public class OnionClient  extends OnionEndPoint{
 
     public void run() {
         try {
-            keyEchange(1251, InetAddress.getByName("localhost"));
+            keyEchange();
             System.out.println("Client finished sharing keys");
 
             msg = "Connecting";
             boolean running = true;
-            port = 1250;
+            targetSocketString = "1250 127.0.0.1";
             while (running){
                 wrapMessage(MessageMode.FORWARD_ON_NETWORK, 3);
                 sendMessage();

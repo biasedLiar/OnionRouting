@@ -2,6 +2,7 @@ import javax.crypto.*;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -13,21 +14,23 @@ import java.util.Collections;
 import java.util.HashMap;
 
 public abstract class OnionEndPoint extends OnionParent{
-    protected HashMap<Integer, PublicKey> keys;
-    private ArrayList<Integer> nodePorts;
+    protected HashMap<String, PublicKey> keys;
+    private ArrayList<String> socketStrings;
 
 
-    public OnionEndPoint(int port, ArrayList<Integer> nodePorts) {
+    public OnionEndPoint(int port, ArrayList<String> socketStrings) {
         super(port);
-        this.nodePorts = nodePorts;
+        this.socketStrings = socketStrings;
         keys = new HashMap<>();
     }
+
+
 
     public void recieveEncryption() throws IOException {
         msgBytes = new byte[1];
         msgBytes[0] = MessageMode.KEY_EXCHANGE.getValue();
-        sendMessage();
 
+        sendMessage();
         recieveMessage();
     }
 
@@ -37,8 +40,8 @@ public abstract class OnionEndPoint extends OnionParent{
         msg = new String(msgBytes);
     }
     
-    public void singleKeyExchange(int port, InetAddress address1) throws IOException, NoSuchAlgorithmException {
-        this.port = port;
+    public void singleKeyExchange(String socketString) throws IOException, NoSuchAlgorithmException {
+        targetSocketString = socketString;
         recieveEncryption();
         String[] splitMessage = msg.split("\n"); //https://attacomsian.com/blog/java-split-string-new-line
         BigInteger modulus = new BigInteger(splitMessage[0]);
@@ -50,26 +53,25 @@ public abstract class OnionEndPoint extends OnionParent{
         KeyFactory factory = KeyFactory.getInstance("RSA");
         try {
             PublicKey pub = factory.generatePublic(spec);
-            keys.put(port, pub);
+            keys.put(targetSocketString, pub);
         } catch (InvalidKeySpecException e) {
             e.printStackTrace();
         }
     }
 
-    public void keyEchange(int port, InetAddress address1) throws NoSuchAlgorithmException, IOException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        for (Integer keyPort :
-                nodePorts) {
-            singleKeyExchange(keyPort, address1);
+    public void keyEchange() throws NoSuchAlgorithmException, IOException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        for (String socketString :
+                socketStrings) {
+            singleKeyExchange(socketString);
         }
     }
 
-    public ArrayList<Integer> getRandomPorts(int numPorts){
-        ArrayList<Integer> ports = new ArrayList<>(keys.keySet());
-        Collections.shuffle(ports);
-        if (ports.size() < numPorts){
-            return ports;
+    public ArrayList<String> getRandomSockets(int numSockets){
+        Collections.shuffle(socketStrings);
+        if (socketStrings.size() < numSockets){
+            return socketStrings;
         } else {
-            return new ArrayList<>(ports.subList(0, numPorts));
+            return new ArrayList<>(socketStrings.subList(0, numSockets));
         }
     }
 
@@ -84,26 +86,30 @@ public abstract class OnionEndPoint extends OnionParent{
         msgBytes = tempBytes;
     }
 
-    public void addTargetPortToMessage(){
-        addPortToMessage(port);
+    public void addTargetSocketToMessage(){
+        addSocketToMessage(targetSocketString);
     }
 
-    public void addSourcePortToMessage(){
-        addPortToMessage(myPort);
+    public void addSourceSocketToMessage(){
+        addSocketToMessage(myPort + " " + myAddress.getHostAddress());
     }
 
-    public void addPortToMessage(int port){
-        byte[] portBytes = new byte[2];
-        portBytes[0] = (byte) Math.floor(port/256);
-        portBytes[1] = (byte) (port % 256);
-        addToFrontOfMessage(portBytes);
+    public void addSocketToMessage(String socketString){
+        byte[] socketBytes = new byte[6];
+        socketBytes[0] = (byte) Math.floor(getPort(socketString)/256);
+        socketBytes[1] = (byte) (getPort(socketString) % 256);
+        String[] myStrings = getAddress(socketString).split("\\.");
+        for (int i = 0; i < myStrings.length; i++) {
+            socketBytes[2+i] = Byte.valueOf(myStrings[i]);
+        }
+        addToFrontOfMessage(socketBytes);
     }
 
 
 
-    public void encryptMessage(int nodePort, MessageMode mode){
+    public void encryptMessage(String nodeSocket, MessageMode mode){
         try {
-            addTargetPortToMessage();
+            addTargetSocketToMessage();
 
             //https://stackoverflow.com/questions/18228579/how-to-create-a-secure-random-aes-key-in-java
             KeyGenerator keyGen = KeyGenerator.getInstance("AES");
@@ -111,7 +117,7 @@ public abstract class OnionEndPoint extends OnionParent{
             SecretKey secretKey = keyGen.generateKey();
 
             encryptWithAES(secretKey);
-            encryptAesKeyWithRsa(secretKey, nodePort);
+            encryptAesKeyWithRsa(secretKey, nodeSocket);
             setMode(mode);
 
 
@@ -139,11 +145,11 @@ public abstract class OnionEndPoint extends OnionParent{
         addToFrontOfMessage(modeByte);
     }
 
-    public void encryptAesKeyWithRsa(SecretKey secretKey, int nodePort){
+    public void encryptAesKeyWithRsa(SecretKey secretKey, String socketString){
         byte[] aesBytes = secretKey.getEncoded();
 
         try {
-            rsaCipher.init(Cipher.ENCRYPT_MODE, keys.get(nodePort));
+            rsaCipher.init(Cipher.ENCRYPT_MODE, keys.get(socketString));
             rsaCipher.update(aesBytes);
             aesBytes = rsaCipher.doFinal();
             //System.out.println("Length of encrypted message from klient: " + bytes.length);
@@ -155,15 +161,14 @@ public abstract class OnionEndPoint extends OnionParent{
         }
     }
 
-    public void wrapMessage(MessageMode mode, int numOnionPorts){
+    public void wrapMessage(MessageMode mode, int numOnionNodes){
         msgBytes = msg.getBytes();
-        addSourcePortToMessage();
-        ArrayList<Integer> onionPorts = getRandomPorts(numOnionPorts);
-        for (int i = 0; i < onionPorts.size(); i++) {
-            encryptMessage(onionPorts.get(i), mode);
-            port = onionPorts.get(i);
+        addSourceSocketToMessage();
+        ArrayList<String> onionSockets = getRandomSockets(numOnionNodes);
+        for (int i = 0; i < onionSockets.size(); i++) {
+            encryptMessage(onionSockets.get(i), mode);
+            targetSocketString = onionSockets.get(i);
         }
-        //Copy array into larger array
         //System.out.println("MSGbytes length: " + msgBytes.length);
     }
 

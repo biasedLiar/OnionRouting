@@ -3,16 +3,32 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.math.BigInteger;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.*;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
+import java.util.ArrayList;
 
 public class TestMain {
     public static void main(String[] args) {
         Cipher cipher;
         KeyPair pair;
+        String s= "127.0.0.1";
+        String[] strings = s.split(".");
+        for (String str :
+                strings) {
+            System.out.println(str);
+        }
+        try {
+            InetAddress ad = InetAddress.getByName("localhost");
+            System.out.println(ad.getHostAddress());
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
 
+        /*
         try {
             cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
             KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
@@ -53,5 +69,7 @@ public class TestMain {
         } catch (BadPaddingException e) {
             e.printStackTrace();
         }
+
+         */
     }
 }

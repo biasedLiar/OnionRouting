@@ -8,6 +8,7 @@ import java.util.Arrays;
 public abstract class OnionParent extends Thread{
     protected DatagramSocket socket;
     protected InetAddress address;
+    protected InetAddress myAddress;
     protected String msg;
     protected byte[] msgBytes;
     protected Cipher rsaCipher;
@@ -16,6 +17,7 @@ public abstract class OnionParent extends Thread{
     protected byte[] buf2;
     protected int port;
     protected int myPort;
+    protected String targetSocketString;
 
     public OnionParent(int port){
         buf = new byte[2048];
@@ -23,9 +25,11 @@ public abstract class OnionParent extends Thread{
         msgBytes = new byte[244];
         this.port = port;
         myPort = port;
+        targetSocketString = "1250 127.0.0.1";
         try {
+            myAddress = InetAddress.getByName("127.0.0.1");
             socket = new DatagramSocket(port);
-            address = InetAddress.getByName("localhost");
+            address = InetAddress.getByName("127.0.0.1");
             rsaCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
             aesCipher = Cipher.getInstance("AES/ECB/PKCS5Padding");//https://howtodoinjava.com/java/java-security/java-aes-encryption-example/
         } catch (NoSuchAlgorithmException e) {
@@ -47,13 +51,16 @@ public abstract class OnionParent extends Thread{
         msgBytes = Arrays.copyOfRange(msgBytes, 0, packet.getLength());
         msg = new String(msgBytes);
         //unless specified otherwise, the response will be sent back;
+
         address = packet.getAddress();
         port = packet.getPort();
+        setSocketString();
 
         //System.out.println("Node recieved message");
     }
 
     public void sendMessage() throws IOException {
+        setTargetFromSocketString();
         buf = msgBytes;
         //System.out.println("MEssage is " + msgBytes.length + " at clientside.");
         DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
@@ -62,19 +69,49 @@ public abstract class OnionParent extends Thread{
         System.out.println("Message sent from " + myPort + " to " + port);
     }
 
+    public int getPort(String socketString){
+        return Integer.parseInt(socketString.split(" ")[0]);
+    }
+
+    public String getAddress(String socketString){
+        return socketString.split(" ")[1];
+    }
+    public void setTargetFromSocketString(){
+        port = getPort(targetSocketString);
+        try {
+            address = InetAddress.getByName(getAddress(targetSocketString));
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void setSocketString(){
+        targetSocketString = port + " " + address.getHostAddress();
+    }
+
+    public int byteToInt(byte b){
+        int n = b;
+        if (n<0){
+            n+=256;
+        }
+        return n;
+    }
+
 
     public void calculatePort(){
-        int n1 = msgBytes[0];
-        int n2 = msgBytes[1];
-        if (n1 < 0){
-            n1 += 256;
+        port = byteToInt(msgBytes[0])*256 + byteToInt(msgBytes[1]);
+        String addressString = "";
+        addressString += byteToInt(msgBytes[2]);
+        for (int i = 0; i < 3; i++) {
+            addressString += "." +  byteToInt(msgBytes[3+i]);
         }
-        if (n2 < 0){
-            n2 += 256;
+        try {
+            address = InetAddress.getByName(addressString);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
         }
-
-        port = n1*256 + n2;
-        msgBytes = Arrays.copyOfRange(msgBytes, 2, msgBytes.length);
+        setSocketString();
+        msgBytes = Arrays.copyOfRange(msgBytes, 6, msgBytes.length);
     }
 
 
