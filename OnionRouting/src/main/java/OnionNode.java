@@ -43,7 +43,7 @@ public class OnionNode extends OnionParent{
 
             msg = modulus + "\n" + exponent;
             msgBytes = msg.getBytes();
-            setMode(MessageMode.KEY_EXCHANGE);
+            addModeToMessage(MessageMode.KEY_EXCHANGE);
 
             //System.out.println("client:\nModulus: " +  String.valueOf(modulus) + "\nExponent: " +  String.valueOf(exponent));
 
@@ -57,6 +57,8 @@ public class OnionNode extends OnionParent{
             //System.out.println(msgBytes.length);
             decryptData(msgBytes);
             //System.out.println("The message is: \n" + new String(msgBytes) + "\nEnd off message.");
+        } else{
+
         }
 
     }
@@ -78,7 +80,7 @@ public class OnionNode extends OnionParent{
             if (mode == MessageMode.FORWARD_ON_NETWORK){
 
                 calculatePort();
-            } else if(mode == MessageMode.FORWARD_OFF_NETWORK){
+            } else if(mode == MessageMode.FORWARD_TO_WEB){
                 System.out.println("TODO: implement this function");
             }
         } catch (InvalidKeyException e) {

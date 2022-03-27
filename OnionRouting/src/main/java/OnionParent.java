@@ -101,7 +101,7 @@ public abstract class OnionParent extends Thread{
         return n;
     }
 
-    public void setMode(MessageMode mode){
+    public void addModeToMessage(MessageMode mode){
         byte[] modeByte = {mode.getValue()};
         addToFrontOfMessage(modeByte);
     }

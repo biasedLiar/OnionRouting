@@ -5,7 +5,8 @@ public enum MessageMode {
     //https://codingexplained.com/coding/java/enum-to-integer-and-integer-to-enum
     KEY_EXCHANGE((byte)1),
     FORWARD_ON_NETWORK((byte)2),
-    FORWARD_OFF_NETWORK((byte)3);
+    FORWARD_TO_WEB((byte)3),
+    SPLIT_RESPONSE((byte)4);
 
     private byte value;
     private static Map map = new HashMap<>();

@@ -14,6 +14,7 @@ public class OnionMain {
                 nodePorts.add(1251+i + " 127.0.0.1");
             }
             new OnionServer(1250, nodePorts).start();
+            new OnionWebServer(8082, nodePorts).start();
             new OnionClient(8081, 1250, nodePorts).start();
         } catch (SocketException e) {
             e.printStackTrace();

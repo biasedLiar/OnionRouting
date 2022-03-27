@@ -28,8 +28,7 @@ public class OnionClient  extends OnionEndPoint{
             boolean running = true;
             targetSocketString = "1250 127.0.0.1";
             while (running){
-                System.out.println(msg.getBytes().length + " Client length");
-                wrapMessage(MessageMode.FORWARD_ON_NETWORK, 3);
+                wrapMessage();
                 sendMessage();
 
                 recieveMessageUpdatePort();
@@ -42,10 +41,12 @@ public class OnionClient  extends OnionEndPoint{
                     System.out.println("Echoserver chosen.\nEnter input then press Enter.");
                     msg = in.nextLine();
                     targetSocketString = "1250 127.0.0.1";
+                    mode = MessageMode.FORWARD_ON_NETWORK;
                 } else if (msg.equals("2")){
-                    System.out.println("Not implemented, using echo server.\nEnter input then press Enter.");
+                    System.out.println("write your website.\nEnter input then press Enter.");
                     msg = in.nextLine();
                     targetSocketString = "1250 127.0.0.1";
+                    mode = MessageMode.FORWARD_TO_WEB;
                 } else {
                     System.out.println("Exiting...");
                     running = false;

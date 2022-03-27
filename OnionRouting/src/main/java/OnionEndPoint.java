@@ -1,8 +1,6 @@
 import javax.crypto.*;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -18,7 +16,8 @@ public abstract class OnionEndPoint extends OnionParent{
     protected HashMap<String, PublicKey> keys;
     private ArrayList<String> socketStrings;
     protected ArrayList<byte[]> waitingMessages;
-    public static int ONION_LAYERS = 10;
+    protected HashMap<Integer, byte[]> splitMsgBytes;
+    public static int ONION_LAYERS = 3;
 
 
 
@@ -30,6 +29,7 @@ public abstract class OnionEndPoint extends OnionParent{
             socketStrings.add(socketString);
         }
         keys = new HashMap<>();
+        splitMsgBytes = new HashMap<>();
         waitingMessages = new ArrayList<>();
     }
 
@@ -56,13 +56,33 @@ public abstract class OnionEndPoint extends OnionParent{
 
     public void recieveMessageUpdatePort() throws IOException {
         if (waitingMessages.size() == 0){
-            recieveMessage();
-            calculatePort();
+            splitMsgBytes = new HashMap<>();
+            do {
+                System.out.println("In loop");
+                recieveMessage();
+                calculatePort();
+                if (mode == MessageMode.SPLIT_RESPONSE){
+                    splitMsgBytes.put(byteToInt(msgBytes[0]), Arrays.copyOfRange(msgBytes, 2, msgBytes.length));
+                    System.out.println("Got a split response, now I have ------------" + splitMsgBytes.size() + ", I need " + byteToInt(msgBytes[0]));
+                    if (splitMsgBytes.size()== byteToInt(msgBytes[1])){
+                        combineSplitMessage();
+                        System.out.println("----------------------Finished-------------------------------------");
+                    }
+                }
+            }while (mode == MessageMode.SPLIT_RESPONSE);
         } else {
             msgBytes = waitingMessages.remove(0);
             msg = new String(msgBytes);
         }
 
+    }
+    public void combineSplitMessage(){
+        msgBytes = new byte[0];
+        for (int i = splitMsgBytes.size() - 1; i >= 0; i--) {
+            addToFrontOfMessage(splitMsgBytes.get(i));
+        }
+        msg = new String(msgBytes);
+        mode = MessageMode.FORWARD_ON_NETWORK;
     }
     
     public void singleKeyExchange(String socketString) throws IOException, NoSuchAlgorithmException {
@@ -139,7 +159,7 @@ public abstract class OnionEndPoint extends OnionParent{
 
             encryptWithAES(secretKey);
             encryptAesKeyWithRsa(secretKey, nodeSocket);
-            setMode(mode);
+            addModeToMessage(mode);
 
 
         } catch (NoSuchAlgorithmException e) {
@@ -179,17 +199,22 @@ public abstract class OnionEndPoint extends OnionParent{
         }
     }
 
-    public void wrapMessage(MessageMode mode, int numOnionNodes){
+    public void wrapMessage(){
         msgBytes = msg.getBytes();
         addSourceSocketToMessage();
-        setMode(mode);
-        ArrayList<String> onionSockets = getRandomSockets(numOnionNodes);
+        addModeToMessage(mode);
+        ArrayList<String> onionSockets = getRandomSockets(ONION_LAYERS);
         for (int i = 0; i < onionSockets.size(); i++) {
-            encryptMessage(onionSockets.get(i), mode);
+            encryptMessage(onionSockets.get(i), MessageMode.FORWARD_ON_NETWORK);
+            System.out.println("Routing through " + onionSockets.get(i));
             targetSocketString = onionSockets.get(i);
         }
         //System.out.println("MSGbytes length: " + msgBytes.length);
     }
+
+
+
+
 
 
 
