@@ -18,8 +18,10 @@ public abstract class OnionParent extends Thread{
     protected int port;
     protected int myPort;
     protected String targetSocketString;
+    protected MessageMode mode;
 
     public OnionParent(int port){
+        mode = MessageMode.FORWARD_ON_NETWORK;
         buf = new byte[2048];
         buf2 = new byte[2048];
         msgBytes = new byte[244];
@@ -49,6 +51,8 @@ public abstract class OnionParent extends Thread{
         msgBytes = packet.getData();
 
         msgBytes = Arrays.copyOfRange(msgBytes, 0, packet.getLength());
+        mode = MessageMode.valueOf(msgBytes[0]);
+        msgBytes = Arrays.copyOfRange(msgBytes, 1, msgBytes.length);
         msg = new String(msgBytes);
         //unless specified otherwise, the response will be sent back;
 
@@ -62,11 +66,11 @@ public abstract class OnionParent extends Thread{
     public void sendMessage() throws IOException {
         setTargetFromSocketString();
         buf = msgBytes;
+        System.out.println("Message sent from " + myPort + " to " + port);
         //System.out.println("MEssage is " + msgBytes.length + " at clientside.");
         DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
         socket.send(packet);
 
-        System.out.println("Message sent from " + myPort + " to " + port);
     }
 
     public int getPort(String socketString){
@@ -97,6 +101,22 @@ public abstract class OnionParent extends Thread{
         return n;
     }
 
+    public void setMode(MessageMode mode){
+        byte[] modeByte = {mode.getValue()};
+        addToFrontOfMessage(modeByte);
+    }
+
+    public void addToFrontOfMessage(byte[] newBytes){
+        byte[] tempBytes = new byte[newBytes.length + msgBytes.length];
+        for (int i = 0; i < newBytes.length; i++) {
+            tempBytes[i] = newBytes[i];
+        }
+        for (int i = 0; i < msgBytes.length; i++) {
+            tempBytes[i + newBytes.length] = msgBytes[i];
+        }
+        msgBytes = tempBytes;
+    }
+
 
     public void calculatePort(){
         port = byteToInt(msgBytes[0])*256 + byteToInt(msgBytes[1]);
@@ -112,6 +132,8 @@ public abstract class OnionParent extends Thread{
         }
         setSocketString();
         msgBytes = Arrays.copyOfRange(msgBytes, 6, msgBytes.length);
+
+        msg = new String(msgBytes);
     }
 
 

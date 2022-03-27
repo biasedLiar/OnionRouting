@@ -10,18 +10,27 @@ import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 
 public abstract class OnionEndPoint extends OnionParent{
     protected HashMap<String, PublicKey> keys;
     private ArrayList<String> socketStrings;
+    protected ArrayList<byte[]> waitingMessages;
+    public static int ONION_LAYERS = 10;
 
 
-    public OnionEndPoint(int port, ArrayList<String> socketStrings) {
+
+    public OnionEndPoint(int port, ArrayList<String> originalSocketStrings) {
         super(port);
-        this.socketStrings = socketStrings;
+        socketStrings = new ArrayList<>();
+        for (String socketString :
+                originalSocketStrings) {
+            socketStrings.add(socketString);
+        }
         keys = new HashMap<>();
+        waitingMessages = new ArrayList<>();
     }
 
 
@@ -31,13 +40,29 @@ public abstract class OnionEndPoint extends OnionParent{
         msgBytes[0] = MessageMode.KEY_EXCHANGE.getValue();
 
         sendMessage();
-        recieveMessage();
+        boolean waiting = true;
+        while (waiting){
+            recieveMessage();
+            System.out.println(mode + " is the current mode");
+            if (mode != MessageMode.KEY_EXCHANGE){
+                System.out.println("Added to waiting");
+                waitingMessages.add(msgBytes);
+            } else {
+                waiting = false;
+                msg = new String(msgBytes);
+            }
+        }
     }
 
     public void recieveMessageUpdatePort() throws IOException {
-        recieveMessage();
-        calculatePort();
-        msg = new String(msgBytes);
+        if (waitingMessages.size() == 0){
+            recieveMessage();
+            calculatePort();
+        } else {
+            msgBytes = waitingMessages.remove(0);
+            msg = new String(msgBytes);
+        }
+
     }
     
     public void singleKeyExchange(String socketString) throws IOException, NoSuchAlgorithmException {
@@ -62,8 +87,13 @@ public abstract class OnionEndPoint extends OnionParent{
     public void keyEchange() throws NoSuchAlgorithmException, IOException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         for (String socketString :
                 socketStrings) {
+            System.out.println("STarting exchange with" + socketString);
             singleKeyExchange(socketString);
+            if (mode != MessageMode.KEY_EXCHANGE){
+                System.out.println("Wrong mode, waiting for keyexhange");
+            }
         }
+        System.out.println(myPort + " has " + keys.size() + " keys.");
     }
 
     public ArrayList<String> getRandomSockets(int numSockets){
@@ -75,16 +105,7 @@ public abstract class OnionEndPoint extends OnionParent{
         }
     }
 
-    public void addToFrontOfMessage(byte[] newBytes){
-        byte[] tempBytes = new byte[newBytes.length + msgBytes.length];
-        for (int i = 0; i < newBytes.length; i++) {
-            tempBytes[i] = newBytes[i];
-        }
-        for (int i = 0; i < msgBytes.length; i++) {
-            tempBytes[i + newBytes.length] = msgBytes[i];
-        }
-        msgBytes = tempBytes;
-    }
+
 
     public void addTargetSocketToMessage(){
         addSocketToMessage(targetSocketString);
@@ -140,10 +161,7 @@ public abstract class OnionEndPoint extends OnionParent{
 
     }
 
-    public void setMode(MessageMode mode){
-        byte[] modeByte = {mode.getValue()};
-        addToFrontOfMessage(modeByte);
-    }
+
 
     public void encryptAesKeyWithRsa(SecretKey secretKey, String socketString){
         byte[] aesBytes = secretKey.getEncoded();
@@ -164,6 +182,7 @@ public abstract class OnionEndPoint extends OnionParent{
     public void wrapMessage(MessageMode mode, int numOnionNodes){
         msgBytes = msg.getBytes();
         addSourceSocketToMessage();
+        setMode(mode);
         ArrayList<String> onionSockets = getRandomSockets(numOnionNodes);
         for (int i = 0; i < onionSockets.size(); i++) {
             encryptMessage(onionSockets.get(i), mode);

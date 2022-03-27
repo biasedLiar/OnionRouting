@@ -23,8 +23,10 @@ public class OnionServer extends OnionEndPoint{
 
             while (running){
                 recieveMessageUpdatePort();
+                System.out.println(msgBytes.length + "From server");
                 //System.out.println("Server her, message recieved: \n" + msg);
                 System.out.println("Server recieved message, sending answer.");
+                System.out.println(msg.length());
                 wrapMessage(MessageMode.FORWARD_ON_NETWORK, 3);
                 sendMessage();
             }

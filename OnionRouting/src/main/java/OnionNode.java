@@ -10,7 +10,6 @@ import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 
 public class OnionNode extends OnionParent{
-    private MessageMode mode;
     private KeyPair pair;
 
     public OnionNode(int port) throws SocketException {
@@ -32,8 +31,7 @@ public class OnionNode extends OnionParent{
     }
 
     public void handleData() throws UnknownHostException, NoSuchAlgorithmException {
-        mode = MessageMode.valueOf(msgBytes[0]);
-        msgBytes = Arrays.copyOfRange(msgBytes, 1, msgBytes.length);
+
 
 
         //System.out.println("encrypted message: " + encryptedMsg + "\nEnd encrypted");
@@ -45,6 +43,7 @@ public class OnionNode extends OnionParent{
 
             msg = modulus + "\n" + exponent;
             msgBytes = msg.getBytes();
+            setMode(MessageMode.KEY_EXCHANGE);
 
             //System.out.println("client:\nModulus: " +  String.valueOf(modulus) + "\nExponent: " +  String.valueOf(exponent));
 
