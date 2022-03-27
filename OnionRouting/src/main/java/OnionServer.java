@@ -20,11 +20,9 @@ public class OnionServer extends OnionEndPoint{
     }
 
     public void add_x_of_y_toFront(int x, int y){
-        System.out.println("X: " + x + ", Y: " + y);
         byte[] myBytes= new byte[2];
         myBytes[0] = (byte) x;
         myBytes[1] = (byte) y;
-        System.out.println("X: " + myBytes[0] + ", Y: " + myBytes[1]);
         addToFrontOfMessage(myBytes);
     }
 
@@ -60,7 +58,6 @@ public class OnionServer extends OnionEndPoint{
                     //msgBytes = Arrays.copyOfRange(msgBytes, 0, 1200);
                     if (msgBytes.length >1000){
                         int numMessages = msgBytes.length/1000 + 1;
-                        System.out.println(numMessages + " nummessages");
                         byte[]msgStorage = msgBytes;
 
                         String ogSocketString = targetSocketString;
@@ -97,7 +94,6 @@ public class OnionServer extends OnionEndPoint{
                     mode = MessageMode.FORWARD_ON_NETWORK;
 
                      */
-                    System.out.println("Finnished sending out");
                 } else {
                     wrapMessage();
                     sendMessage();

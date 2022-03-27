@@ -8,11 +8,11 @@ import java.util.*;
 
 public class OnionClient  extends OnionEndPoint{
     private Scanner in;
-    private int serverPort;
+    private String serverSocketString;
 
-    public OnionClient(int port, int serverPort, ArrayList<String> nodePorts) throws SocketException, UnknownHostException {
+    public OnionClient(int port, String serverSocketString, ArrayList<String> nodePorts) throws SocketException, UnknownHostException {
         super(port, nodePorts);
-        this.serverPort = serverPort;
+        this.serverSocketString = serverSocketString;
         in = new Scanner(System.in);
     }
 
@@ -22,37 +22,36 @@ public class OnionClient  extends OnionEndPoint{
     public void run() {
         try {
             keyEchange();
-            System.out.println("Client finished sharing keys");
+            System.out.println("Client finished sharing keys\n\nSending test message to echo server.");
 
             msg = "Connecting";
             boolean running = true;
-            targetSocketString = "1250 127.0.0.1";
+            targetSocketString = serverSocketString;
             while (running){
                 wrapMessage();
                 sendMessage();
 
                 recieveMessageUpdatePort();
-                System.out.println(new String(msgBytes));
+                System.out.println("Response: \n" + new String(msgBytes));
 
-                System.out.println("\nSelect option\n1: Echoserver\n2: Webserver\n3: Terminate");
+                System.out.println("\nSelect option\n1: Echo server\n2: Web server\n3: Terminate");
                 msg = in.nextLine();
                 if (msg.equals("1")){
                     //
-                    System.out.println("Echoserver chosen.\nEnter input then press Enter.");
+                    System.out.println("Echo server chosen.\nEnter input then press Enter.");
                     msg = in.nextLine();
-                    targetSocketString = "1250 127.0.0.1";
+                    targetSocketString = serverSocketString;
                     mode = MessageMode.FORWARD_ON_NETWORK;
                 } else if (msg.equals("2")){
-                    System.out.println("write your website.\nEnter input then press Enter.");
+                    System.out.println("Web server chosen.\nEnter url then press Enter.");
                     msg = in.nextLine();
-                    targetSocketString = "1250 127.0.0.1";
+                    targetSocketString = serverSocketString;
                     mode = MessageMode.FORWARD_TO_WEB;
                 } else {
                     System.out.println("Exiting...");
                     running = false;
                 }
             }
-            System.out.println("Exiting");
 
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException | UnknownHostException e) {
             e.printStackTrace();

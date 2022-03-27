@@ -43,9 +43,7 @@ public abstract class OnionEndPoint extends OnionParent{
         boolean waiting = true;
         while (waiting){
             recieveMessage();
-            System.out.println(mode + " is the current mode");
             if (mode != MessageMode.KEY_EXCHANGE){
-                System.out.println("Added to waiting");
                 waitingMessages.add(msgBytes);
             } else {
                 waiting = false;
@@ -58,15 +56,12 @@ public abstract class OnionEndPoint extends OnionParent{
         if (waitingMessages.size() == 0){
             splitMsgBytes = new HashMap<>();
             do {
-                System.out.println("In loop");
                 recieveMessage();
                 calculatePort();
                 if (mode == MessageMode.SPLIT_RESPONSE){
                     splitMsgBytes.put(byteToInt(msgBytes[0]), Arrays.copyOfRange(msgBytes, 2, msgBytes.length));
-                    System.out.println("Got a split response, now I have ------------" + splitMsgBytes.size() + ", I need " + byteToInt(msgBytes[0]));
                     if (splitMsgBytes.size()== byteToInt(msgBytes[1])){
                         combineSplitMessage();
-                        System.out.println("----------------------Finished-------------------------------------");
                     }
                 }
             }while (mode == MessageMode.SPLIT_RESPONSE);
@@ -107,13 +102,8 @@ public abstract class OnionEndPoint extends OnionParent{
     public void keyEchange() throws NoSuchAlgorithmException, IOException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         for (String socketString :
                 socketStrings) {
-            System.out.println("STarting exchange with" + socketString);
             singleKeyExchange(socketString);
-            if (mode != MessageMode.KEY_EXCHANGE){
-                System.out.println("Wrong mode, waiting for keyexhange");
-            }
         }
-        System.out.println(myPort + " has " + keys.size() + " keys.");
     }
 
     public ArrayList<String> getRandomSockets(int numSockets){
@@ -206,7 +196,6 @@ public abstract class OnionEndPoint extends OnionParent{
         ArrayList<String> onionSockets = getRandomSockets(ONION_LAYERS);
         for (int i = 0; i < onionSockets.size(); i++) {
             encryptMessage(onionSockets.get(i), MessageMode.FORWARD_ON_NETWORK);
-            System.out.println("Routing through " + onionSockets.get(i));
             targetSocketString = onionSockets.get(i);
         }
         //System.out.println("MSGbytes length: " + msgBytes.length);
